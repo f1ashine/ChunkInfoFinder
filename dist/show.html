@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>扫描结果报告</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f6f8;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+            min-height: 80vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            padding: 20px 30px;
+            border-bottom: 1px solid #eee;
+        }
+
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin: 0;
+            font-size: 1.8em;
+        }
+
+        .tabs {
+            display: flex;
+            background-color: #fafafa;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
+            font-size: 1.1em;
+            font-weight: 600;
+            color: #7f8c8d;
+            background: none;
+            border: none;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .tab-btn:hover {
+            background-color: #f1f2f6;
+            color: #2c3e50;
+        }
+
+        .tab-btn.active {
+            color: #3498db;
+            border-bottom: 3px solid #3498db;
+            background-color: #fff;
+        }
+
+        .content-area {
+            padding: 30px;
+            flex-grow: 1;
+        }
+
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.4s;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        details {
+            border: 1px solid #e1e4e8;
+            border-radius: 4px;
+            margin-bottom: 8px;
+            background-color: #fff;
+            transition: all 0.2s;
+            overflow: hidden;
+        }
+
+        details[open] {
+            border-left: 4px solid #e74c3c;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        .api-item[open] {
+            border-left: 4px solid #3498db; 
+        }
+
+        summary {
+            padding: 12px 15px;
+            cursor: pointer;
+            list-style: none;
+            background-color: #f8f9fa;
+            user-select: none;
+        }
+
+        summary:hover {
+            background-color: #eee;
+        }
+
+        summary::-webkit-details-marker {
+            display: none;
+        }
+
+        .detail-content {
+            padding: 15px;
+            background-color: #fff;
+            border-top: 1px solid #e1e4e8;
+        }
+
+        .code-block {
+            font-family: Consolas, Monaco, 'Andale Mono', monospace;
+            background: #2d3436;
+            color: #dfe6e9;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            margin-top: 8px;
+            font-size: 0.9em;
+            word-break: break-all;
+            white-space: pre-wrap;
+        }
+
+        .label-text {
+            font-weight: bold;
+            color: #555;
+            display: inline-block;
+            margin-bottom: 5px;
+        }
+        .category-group {
+            margin-bottom: 25px;
+            border: 1px solid #eee;
+            border-radius: 6px;
+            padding: 15px;
+            background-color: #fff;
+        }
+        
+        .category-title {
+            font-size: 1.1em;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #f0f0f0;
+            padding-bottom: 5px;
+        }
+        
+        .sensitive-summary-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 500;
+        }
+
+        .sensitive-summary-content::after {
+            content: '+';
+            font-weight: bold;
+            color: #999;
+            margin-left: 10px;
+            font-size: 1.2em;
+        }
+
+        details[open] > summary > .sensitive-summary-content::after { 
+            content: '-'; 
+            color: #e74c3c;
+        }
+
+        .api-list-header {
+            display: flex;
+            background-color: #34495e;
+            color: white;
+            padding: 12px 15px;
+            border-radius: 4px 4px 0 0;
+            font-weight: bold;
+            font-size: 0.95em;
+        }
+
+        .api-summary-row {
+            display: flex;
+            align-items: center;
+            width: 100%;
+        }
+
+        .col-path { 
+            flex: 2; 
+            overflow: hidden; 
+        }
+
+        .col-path-wrapper {
+            display: flex;
+            align-items: center;
+            width: 100%;
+        }
+
+        .path-text {
+            font-family: consolas;
+            color: #2980b9;
+            font-weight: bold;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            margin-right: 10px;
+            cursor: text;
+        }
+
+        .col-status { flex: 0 0 100px; text-align: center; }
+
+        .col-len { flex: 0 0 100px; text-align: center; }
+
+        .col-toggle { 
+            flex: 0 0 30px; 
+            text-align: right; 
+            font-weight: bold;
+            font-size: 1.2em;
+            line-height: 1;
+        }
+
+        .api-list-header .col-path { color: white; font-family: inherit; display: block;}
+
+        .status-badge {
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 0.85em;
+            font-weight: bold;
+            color: #fff;
+            display: inline-block;
+            min-width: 45px;
+        }
+
+        .bg-2xx { background-color: #27ae60; }
+
+        .bg-4xx { background-color: #e67e22; }
+
+        .bg-5xx { background-color: #c0392b; }
+
+        .filter-bar {
+            background: #ecf0f1;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .api-item .col-toggle::after { 
+            content: '+'; 
+            color: #999; 
+        }
+
+        .api-item[open] .col-toggle::after { 
+            content: '-'; 
+            color: #e74c3c; 
+        }
+
+        .copy-btn {
+            background: transparent;
+            border: 1px solid #dcdcdc;
+            color: #7f8c8d;
+            cursor: pointer;
+            border-radius: 4px;
+            padding: 2px 6px;
+            font-size: 0.75em;
+            line-height: 1;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            height: 20px;
+            flex-shrink: 0;
+        }
+
+        .copy-btn:hover {
+            background-color: #eef2f7;
+            color: #3498db;
+            border-color: #3498db;
+        }
+
+        .copy-btn:active {
+            transform: translateY(1px);
+        }
+
+        .copy-btn.copied {
+            background-color: #27ae60;
+            color: white;
+            border-color: #27ae60;
+        }
+        
+        .col-len.sortable {
+            cursor: pointer;
+            user-select: none;
+            position: relative;
+            transition: background-color 0.2s;
+        }
+
+        .col-len.sortable:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }
+
+        .sort-icon {
+            display: inline-block;
+            font-size: 0.8em;
+            margin-left: 4px;
+            width: 10px;
+            color: #bdc3c7;
+        }
+
+         .highlight-match {
+            background-color: #ffe066;
+            color: #d32f2f;
+            font-weight: bold;
+            border-radius: 3px;
+            padding: 0 2px;
+            box-shadow: 0 0 2px rgba(0,0,0,0.2);
+        }
+        
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>扫描结果报告</h1>
+    </header>
+    <div class="tabs">
+        <button class="tab-btn active" id="btn-sensitive" data-target="tab-sensitive">敏感信息扫描报告</button>
+        <button class="tab-btn" id="btn-api" data-target="tab-api">API扫描报告</button>
+    </div>
+
+    <div class="content-area">
+        <div id="tab-sensitive" class="tab-content active">
+        </div>
+        <div id="tab-api" class="tab-content">
+            <div class="filter-bar">
+                <div>
+                    <label>状态码：</label>
+                    <select id="statusFilter" style="padding:5px;">
+                        <option value="all">全部</option>
+                    </select>
+                </div>
+                <div>
+                    <label>响应内容长度 ≥：</label>
+                    <input type="number" id="lengthFilter" placeholder="0" value="0" style="padding:5px; width:80px;">
+                </div>
+                <div>
+                    <label>关键字：</label>
+                    <input type="text" id="keywordFilter" placeholder="搜索 URL 或 响应内容" style="padding:5px; width:180px;">
+                </div>
+                <div style="margin-left:auto; font-size:0.9em; color:#7f8c8d;">
+                    显示: <strong id="visibleCount" style="color:#333">0</strong> / 总计: <span id="totalCount">0</span>
+                </div>
+            </div>
+            <div class="api-list-header">
+                <div class="col-path">API</div>
+                <div class="col-status">状态码</div>
+                <div class="col-len sortable" id="btnSortLen" title="点击按响应长度排序">长度 <span id="iconSortLen" class="sort-icon"></span></div>
+                <div class="col-toggle"></div>
+            </div>
+            <div id="apiListContainer">
+            </div> 
+        </div>
+    </div>
+</div>
+<script>
+    const url = "";
+    const apiScanResult = [];
+    const sensitiveInfoResult = [];
+</script>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        
+        // ============================================
+        // 1：动态渲染敏感信息
+        // ============================================
+        renderSensitiveInfo();
+        function renderSensitiveInfo() {
+            const container = document.getElementById('tab-sensitive');
+            const styleId = 'sensitive-nested-style';
+            if (!document.getElementById(styleId)) {
+                const style = document.createElement('style');
+                style.id = styleId;
+                style.innerHTML = `
+                    details.category-wrapper {
+                        border: 1px solid #eee;
+                        background-color: #f8f9fa; /* 浅灰背景区分 */
+                        margin-bottom: 15px;
+                        border-radius: 6px;
+                        overflow: hidden;
+                    }
+                    details.category-wrapper[open] {
+                        border-left: 1px solid #eee; 
+                        box-shadow: none;
+                        background-color: #fff;
+                    }
+                    summary.category-summary {
+                        background-color: #ecf0f1;
+                        font-weight: bold;
+                        color: #2c3e50;
+                        font-size: 1.05em;
+                        padding: 15px;
+                        border-bottom: 1px solid transparent;
+                    }
+                    details.category-wrapper[open] > summary.category-summary {
+                        border-bottom: 1px solid #eee;
+                        background-color: #fff;
+                    }
+                    .category-items-container {
+                        padding: 15px 15px 5px 15px;
+                        background-color: #fff;
+                    }
+                    details.item-wrapper {
+                        border: 1px solid #e1e4e8;
+                        margin-bottom: 10px;
+                        background-color: #fff;
+                    }
+                    details.item-wrapper[open] {
+                        border-left: 4px solid #e74c3c;
+                        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+                    }
+                `;
+                document.head.appendChild(style);
+            }
+            if (!sensitiveInfoResult || sensitiveInfoResult.length === 0) {
+                container.innerHTML = '<p style="text-align:center; color:#999; margin-top:20px;">无敏感信息</p>';
+                return;
+            }
+            const grouped = {};
+            sensitiveInfoResult.forEach(item => {
+                if (!grouped[item.Category]) grouped[item.Category] = [];
+                grouped[item.Category].push(item);
+            });
+            container.innerHTML = '';
+
+            for (const category in grouped) {
+                const items = grouped[category];
+                const categoryDetails = document.createElement('details');
+                categoryDetails.className = 'category-wrapper'; // 对应上面注入的 CSS 类
+                const categorySummary = document.createElement('summary');
+                categorySummary.className = 'category-summary';
+                categorySummary.innerHTML = `${escapeHtml(category)} <span style="font-weight:normal; color:#7f8c8d; font-size:0.9em; margin-left:5px;">(${items.length})</span>`;
+                const itemsContainer = document.createElement('div');
+                itemsContainer.className = 'category-items-container';
+                items.forEach(item => {
+                    let decodedContext = decodeBase64Content(item.HighlightedContext);
+                    let matchedText = decodeBase64Content(item.MatchedText);
+                    
+                    const parts = decodedContext.split('§');
+                    const htmlParts = parts.map((part, index) => {
+                        const safeText = escapeHtml(part);
+                        if (index % 2 === 1) {
+                            return `<span class="highlight-match">${safeText}</span>`;
+                        }
+                        return safeText;
+                    });
+                    const finalHtml = htmlParts.join('');
+                    const itemDetails = document.createElement('details');
+                    itemDetails.className = 'item-wrapper';
+                    const itemSummary = document.createElement('summary');
+                    itemSummary.innerHTML = `<div class="sensitive-summary-content">
+                        <span style="font-family:consolas, monospace; color:#c0392b;">${escapeHtml(matchedText)}</span>
+                    </div>`;
+                    const itemContent = document.createElement('div');
+                    itemContent.className = 'detail-content';
+                    itemContent.innerHTML = `
+                        <div style="margin-bottom:5px;">
+                            <span class="label-text">文件路径：</span> 
+                            <span style="color:#2c3e50; word-break:break-all;">${escapeHtml(item.FileName)}</span>
+                        </div>
+                        <div><span class="label-text">行号：</span> ${item.LineNumber}</div>
+                        <div class="code-block">${finalHtml}</div>
+                    `;
+                    itemDetails.appendChild(itemSummary);
+                    itemDetails.appendChild(itemContent);
+                    itemsContainer.appendChild(itemDetails);
+                });
+                categoryDetails.appendChild(categorySummary);
+                categoryDetails.appendChild(itemsContainer);
+                
+                container.appendChild(categoryDetails);
+            }
+        }
+
+        // ============================================
+        // 2：初始化 API 筛选器
+        // ============================================
+        initStatusFilterOptions();
+
+        function initStatusFilterOptions() {
+            const statusSelect = document.getElementById('statusFilter');
+            if (!apiScanResult || apiScanResult.length === 0) return;
+
+            const codes = new Set(apiScanResult.map(item => item.StatusCode));
+            const sortedCodes = Array.from(codes).sort((a, b) => a - b);
+
+            sortedCodes.forEach(code => {
+                const option = document.createElement('option');
+                option.value = code;
+                option.textContent = code;
+                statusSelect.appendChild(option);
+            });
+        }
+
+        // ============================================
+        // 3：动态渲染 API 列表 (含复制按钮)
+        // ============================================
+        renderApiList();
+
+        function renderApiList() {
+            const container = document.getElementById('apiListContainer');
+            if (!apiScanResult || apiScanResult.length === 0) {
+                container.innerHTML = '<p style="text-align:center; color:#999; margin-top:20px;">无 API 扫描结果</p>';
+                return;
+            }
+
+            apiScanResult.forEach(item => {
+                let decodedBody = decodeBase64Content(item.ResponseContent);
+                let statusClass = 'bg-5xx';
+                if (item.StatusCode >= 200 && item.StatusCode < 300) statusClass = 'bg-2xx';
+                else if (item.StatusCode >= 400 && item.StatusCode < 500) statusClass = 'bg-4xx';
+                const contentLen = item.ResponseLength;
+                const pathSafe = escapeHtml(url + item.Path);
+                const details = document.createElement('details');
+                details.className = 'api-item';
+                details.setAttribute('data-status', item.StatusCode);
+                details.setAttribute('data-length', contentLen);
+                details.innerHTML = `
+                    <summary>
+                        <div class="api-summary-row">
+                            <div class="col-path">
+                                <div class="col-path-wrapper">
+                                    <span class="path-text" title="${pathSafe}" onclick="event.stopPropagation()">${pathSafe}</span>
+                                    <button class="copy-btn" onclick="copyText(event, '${pathSafe}', this)" title="复制 URL">Copy</button>
+                                </div>
+                            </div>
+                            <div class="col-status"><span class="status-badge ${statusClass}">${item.StatusCode}</span></div>
+                            <div class="col-len">${contentLen}</div>
+                            <div class="col-toggle"></div>
+                        </div>
+                    </summary>
+                    <div class="detail-content">
+                        <div style="margin-bottom:10px;">
+                            <span class="label-text">对应文件：</span><br>
+                            <span style="font-family:monospace; color:#555;">${escapeHtml(item.FileName)}</span>
+                        </div>
+                        <div>
+                            <span class="label-text">响应内容：</span>
+                            <div class="code-block">${escapeHtml(decodedBody)}</div>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(details);
+            });
+        }
+
+        // -------------------------
+        // 交互逻辑：筛选
+        // -------------------------
+        const statusSelect = document.getElementById('statusFilter');
+        const lengthInput = document.getElementById('lengthFilter');
+        const keywordInput = document.getElementById('keywordFilter');
+
+        statusSelect.addEventListener('change', filterApiList);
+        lengthInput.addEventListener('input', filterApiList);
+        keywordInput.addEventListener('input', filterApiList);
+
+        filterApiList();
+
+        function filterApiList() {
+            const statusFilter = statusSelect.value;
+            const lengthFilter = parseInt(lengthInput.value) || 0;
+            const keyword = keywordInput.value.toLowerCase().trim();
+
+            const items = document.querySelectorAll('.api-item');
+            let visible = 0;
+            let total = items.length;
+
+            items.forEach(item => {
+                const status = item.getAttribute('data-status');
+                const length = parseInt(item.getAttribute('data-length'));
+                const contentText = item.textContent.toLowerCase(); 
+                const statusMatch = (statusFilter === 'all') || (status === statusFilter);
+                const lengthMatch = length >= lengthFilter;
+                const keywordMatch = !keyword || contentText.includes(keyword);
+                if (statusMatch && lengthMatch && keywordMatch) {
+                    item.style.display = ""; 
+                    visible++;
+                } else {
+                    item.style.display = "none";
+                    item.removeAttribute('open'); // 隐藏时自动折叠
+                }
+            });
+            document.getElementById('visibleCount').innerText = visible;
+            document.getElementById('totalCount').innerText = total;
+        }
+        
+        // -------------------------
+        // 交互逻辑：Tab 切换
+        // -------------------------
+        const tabs = document.querySelectorAll('.tab-btn');
+        const contents = document.querySelectorAll('.tab-content');
+
+        tabs.forEach(tab => {
+            tab.addEventListener('click', function() {
+                tabs.forEach(t => t.classList.remove('active'));
+                contents.forEach(c => c.classList.remove('active'));
+                this.classList.add('active');
+                document.getElementById(this.getAttribute('data-target')).classList.add('active');
+            });
+        });
+
+        initSortHandler();
+        function initSortHandler() {
+            const sortBtn = document.getElementById('btnSortLen');
+            const sortIcon = document.getElementById('iconSortLen');
+            let currentSortOrder = 'default';
+
+            if(!sortBtn) return;
+
+            sortBtn.addEventListener('click', function() {
+                const container = document.getElementById('apiListContainer');
+                const items = Array.from(container.querySelectorAll('.api-item'));
+                
+                if (items.length === 0) return;
+                if (currentSortOrder === 'default' || currentSortOrder === 'asc') {
+                    currentSortOrder = 'desc';
+                    sortIcon.textContent = '↓';
+                } else {
+                    currentSortOrder = 'asc';
+                    sortIcon.textContent = '↑';
+                }
+                items.sort((a, b) => {
+                    const lenA = parseInt(a.getAttribute('data-length') || 0);
+                    const lenB = parseInt(b.getAttribute('data-length') || 0);
+
+                    if (currentSortOrder === 'asc') {
+                        return lenA - lenB;
+                    } else {
+                        return lenB - lenA;
+                    }
+                });
+                items.forEach(item => container.appendChild(item));
+            });
+        }
+
+        // -------------------------
+        // 工具函数
+        // -------------------------
+        function escapeHtml(text) {
+            if (!text) return "";
+            return text
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+    });
+
+    // -------------------------
+    // 全局功能：复制到剪贴板
+    // -------------------------
+    function copyText(event, text, btnElement) {
+        event.stopPropagation();
+        event.preventDefault();
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(text).then(() => {
+                showCopiedFeedback(btnElement);
+            }, () => {
+                fallbackCopy(text, btnElement);
+            });
+        } else {
+            fallbackCopy(text, btnElement);
+        }
+    }
+
+    function fallbackCopy(text, btnElement) {
+        const textArea = document.createElement("textarea");
+        textArea.value = text;
+        textArea.style.position = "fixed";
+        textArea.style.left = "-9999px";
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        
+        try {
+            document.execCommand('copy');
+            showCopiedFeedback(btnElement);
+        } catch (err) {
+            console.error('Copy failed', err);
+            alert("复制失败，请手动复制");
+        }
+        document.body.removeChild(textArea);
+    }
+
+    function showCopiedFeedback(btn) {
+        const originalText = btn.innerText;
+        btn.innerText = "Copied!";
+        btn.classList.add("copied");
+        
+        setTimeout(() => {
+            btn.innerText = originalText;
+            btn.classList.remove("copied");
+        }, 1500);
+    }
+
+    function decodeBase64Content(base64Str) {
+        if (!base64Str) return "";
+        try {
+            const binaryString = atob(base64Str);
+            const len = binaryString.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+            return new TextDecoder("utf-8").decode(bytes);
+        } catch (e) {
+            console.warn("Base64 解码失败:", e, base64Str);
+            return "[解码错误: 无效的内容]";
+        }
+    }
+</script>
+</body>
+</html>

@@ -1,0 +1,145 @@
+name: Build and Package
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    # 1. 执行编译 (生成 dist/index.js)
+    - name: Run Compile
+      run: npm run compile
+    
+    - name: commit and push index.js
+      run: |
+        git config --global user.name "github-action[bot]"
+        git config --global user.email "github-actions[bot]@users.noreply.github.com"
+        git add -f dist/index.js
+
+        if git diff --staged --quiet; then
+          echo "⚠️ No changes detected in dist/index.js, skipping push."
+        else
+          # [skip ci] 用于防止本次 push 再次触发 Action 导致死循环
+          git commit -m "build: auto update dist/index.js [skip ci]"
+          git push origin HEAD:main
+          echo "✅ dist/index.js pushed to main"
+        fi
+
+    # 2. 在 dist 目录下生成专用于打包的新 package.json
+    - name: Generate dist/package.json
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          const path = require('path');
+          
+          const rootPkg = require('./package.json');
+          
+          const distPkg = {
+            name: rootPkg.name,
+            version: rootPkg.version,
+            description: rootPkg.description,
+            bin: "index.js",
+            type: "commonjs",
+            pkg: {
+              targets: [
+                "node20-linux-x64",
+                "node20-win-x64",
+                "node20-macos-arm64",
+                "node20-win-arm64", 
+                "node20-macos-x64"
+              ],
+              outputPath: "."
+            }
+          };
+          
+          fs.writeFileSync(
+            path.join(process.cwd(), 'dist/package.json'), 
+            JSON.stringify(distPkg, null, 2)
+          );
+          console.log("✅ Created new package.json in dist/");
+    
+    - name: Install ldid
+      run: |
+        curl -L -o ldid https://github.com/ProcursusTeam/ldid/releases/download/v2.1.5-procursus7/ldid_linux_x86_64
+        chmod +x ldid
+        sudo mv ldid /bin/ldid
+
+    # 3. 使用指定版本的 pkg 进行打包
+    - name: Run PKG
+      run: |
+        cd dist
+        npx @yao-pkg/pkg@6.7.0 . --debug
+        ls -lh
+
+    # Linux
+    - name: Upload Artifact (Linux x64)
+      uses: actions/upload-artifact@v4
+      with:
+        name: chunkinfofinder-linux-x64
+        path: |
+          dist/chunkinfofinder-linux-x64
+          dist/blacklist.json
+          dist/show.html
+
+
+    # Windows x64
+    - name: Upload Artifact (Windows x64)
+      uses: actions/upload-artifact@v4
+      with:
+        name: chunkinfofinder-win-x64
+        path: |
+          dist/chunkinfofinder-win-x64.exe
+          dist/blacklist.json
+          dist/show.html
+
+    # Windows ARM64
+    - name: Upload Artifact (Windows arm64)
+      uses: actions/upload-artifact@v4
+      with:
+        name: chunkinfofinder-win-arm64
+        path: |
+          dist/chunkinfofinder-win-arm64.exe
+          dist/blacklist.json
+          dist/show.html
+
+    # macOS ARM64 (Apple Silicon)
+    - name: Upload Artifact (macOS arm64)
+      uses: actions/upload-artifact@v4
+      with:
+        name: chunkinfofinder-macos-arm64
+        path: |
+          dist/chunkinfofinder-macos-arm64
+          dist/blacklist.json
+          dist/show.html
+
+    # macOS x64 (Intel)
+    - name: Upload Artifact (macOS x64)
+      uses: actions/upload-artifact@v4
+      with:
+        name: chunkinfofinder-macos-x64
+        path: |
+          dist/chunkinfofinder-macos-x64
+          dist/blacklist.json
+          dist/show.html
